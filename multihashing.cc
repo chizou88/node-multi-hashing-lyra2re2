@@ -1,8 +1,8 @@
-#include <nan.h>
 #include <node.h>
 #include <node_buffer.h>
 #include <v8.h>
 #include <stdint.h>
+#include <nan.h>
 
 extern "C" {
     #include "bcrypt.h"
@@ -26,107 +26,107 @@ extern "C" {
     #include "sha1.h"
     #include "x15.h"
 	#include "fresh.h"
+    #include "Lyra2RE.h"
 }
 
-#include "boolberry.h"
+#define THROW_ERROR_EXCEPTION(x) NanThrowError(x)
+#define THROW_ERROR_EXCEPTION_WITH_STATUS_CODE(x, y) NanThrowError(x, y)
 
 using namespace node;
 using namespace v8;
 
-void except(const char* msg) {
-	Isolate* isolate = Isolate::GetCurrent();
-    isolate->ThrowException(Exception::Error(String::NewFromUtf8(isolate, msg)));
-}
-
-void quark(const FunctionCallbackInfo<Value>& args) {
-     Isolate* isolate = Isolate::GetCurrent();HandleScope scope(isolate);
+NAN_METHOD(quark) {
+    NanScope();
 
     if (args.Length() < 1)
-        return except("You must provide one argument.");
+        return THROW_ERROR_EXCEPTION("You must provide one argument.");
 
     Local<Object> target = args[0]->ToObject();
 
     if(!Buffer::HasInstance(target))
-        return except("Argument should be a buffer object.");
+        return THROW_ERROR_EXCEPTION("Argument should be a buffer object.");
 
     char * input = Buffer::Data(target);
-    char* output = new char[32];
-    
+    char output[32];
+
     uint32_t input_len = Buffer::Length(target);
 
     quark_hash(input, output, input_len);
 
-    Local<Object> buff = Nan::NewBuffer(output, 32).ToLocalChecked();
-    args.GetReturnValue().Set(buff);
+    NanReturnValue(
+        NanNewBufferHandle(output, 32)
+    );
 }
 
-void x11(const FunctionCallbackInfo<Value>& args) {
-     Isolate* isolate = Isolate::GetCurrent();HandleScope scope(isolate);
+NAN_METHOD(x11) {
+    NanScope();
 
     if (args.Length() < 1)
-        return except("You must provide one argument.");
+        return THROW_ERROR_EXCEPTION("You must provide one argument.");
 
     Local<Object> target = args[0]->ToObject();
 
     if(!Buffer::HasInstance(target))
-        return except("Argument should be a buffer object.");
+        return THROW_ERROR_EXCEPTION("Argument should be a buffer object.");
 
     char * input = Buffer::Data(target);
-    char* output = new char[32];
+    char output[32];
 
     uint32_t input_len = Buffer::Length(target);
 
     x11_hash(input, output, input_len);
 
-    Local<Object> buff = Nan::NewBuffer(output, 32).ToLocalChecked();
-    args.GetReturnValue().Set(buff);
+    NanReturnValue(
+        NanNewBufferHandle(output, 32)
+    );
 }
 
-void scrypt(const FunctionCallbackInfo<Value>& args) {
-    Isolate* isolate = Isolate::GetCurrent();HandleScope scope(isolate);
+NAN_METHOD(scrypt) {
+   NanScope();
 
    if (args.Length() < 3)
-       return except("You must provide buffer to hash, N value, and R value");
+       return THROW_ERROR_EXCEPTION("You must provide buffer to hash, N value, and R value");
 
    Local<Object> target = args[0]->ToObject();
 
    if(!Buffer::HasInstance(target))
-       return except("Argument should be a buffer object.");
-    
-   Local<Number> numn = args[1]->ToNumber(isolate);
+       return THROW_ERROR_EXCEPTION("Argument should be a buffer object.");
+
+   Local<Number> numn = args[1]->ToNumber();
    unsigned int nValue = numn->Value();
-   Local<Number> numr = args[2]->ToNumber(isolate);
+   Local<Number> numr = args[2]->ToNumber();
    unsigned int rValue = numr->Value();
-   
+
    char * input = Buffer::Data(target);
-   char* output = new char[32];
+   char output[32];
 
    uint32_t input_len = Buffer::Length(target);
-   
+
    scrypt_N_R_1_256(input, output, nValue, rValue, input_len);
 
-   Local<Object> buff = Nan::NewBuffer(output, 32).ToLocalChecked();
-   args.GetReturnValue().Set(buff);
+   NanReturnValue(
+       NanNewBufferHandle(output, 32)
+    );
 }
 
 
 
-void scryptn(const FunctionCallbackInfo<Value>& args) {
-    Isolate* isolate = Isolate::GetCurrent();HandleScope scope(isolate);
+NAN_METHOD(scryptn) {
+   NanScope();
 
    if (args.Length() < 2)
-       return except("You must provide buffer to hash and N factor.");
+       return THROW_ERROR_EXCEPTION("You must provide buffer to hash and N factor.");
 
    Local<Object> target = args[0]->ToObject();
 
    if(!Buffer::HasInstance(target))
-       return except("Argument should be a buffer object.");
+       return THROW_ERROR_EXCEPTION("Argument should be a buffer object.");
 
-   Local<Number> num = args[1]->ToNumber(isolate);
+   Local<Number> num = args[1]->ToNumber();
    unsigned int nFactor = num->Value();
 
    char * input = Buffer::Data(target);
-   char* output = new char[32];
+   char output[32];
 
    uint32_t input_len = Buffer::Length(target);
 
@@ -136,494 +136,463 @@ void scryptn(const FunctionCallbackInfo<Value>& args) {
    scrypt_N_R_1_256(input, output, N, 1, input_len); //hardcode for now to R=1 for now
 
 
-   Local<Object> buff = Nan::NewBuffer(output, 32).ToLocalChecked();
-   args.GetReturnValue().Set(buff);
+   NanReturnValue(
+       NanNewBufferHandle(output, 32)
+    );
 }
 
-void scryptjane(const FunctionCallbackInfo<Value>& args) {
-     Isolate* isolate = Isolate::GetCurrent();HandleScope scope(isolate);
+NAN_METHOD(scryptjane) {
+    NanScope();
 
     if (args.Length() < 5)
-        return except("You must provide two argument: buffer, timestamp as number, and nChainStarTime as number, nMin, and nMax");
+        return THROW_ERROR_EXCEPTION("You must provide two argument: buffer, timestamp as number, and nChainStarTime as number, nMin, and nMax");
 
     Local<Object> target = args[0]->ToObject();
 
     if(!Buffer::HasInstance(target))
-        return except("First should be a buffer object.");
+        return THROW_ERROR_EXCEPTION("First should be a buffer object.");
 
-    Local<Number> num = args[1]->ToNumber(isolate);
+    Local<Number> num = args[1]->ToNumber();
     int timestamp = num->Value();
 
-    Local<Number> num2 = args[2]->ToNumber(isolate);
+    Local<Number> num2 = args[2]->ToNumber();
     int nChainStartTime = num2->Value();
 
-    Local<Number> num3 = args[3]->ToNumber(isolate);
+    Local<Number> num3 = args[3]->ToNumber();
     int nMin = num3->Value();
 
-    Local<Number> num4 = args[4]->ToNumber(isolate);
+    Local<Number> num4 = args[4]->ToNumber();
     int nMax = num4->Value();
 
     char * input = Buffer::Data(target);
-    char* output = new char[32];
+    char output[32];
 
     uint32_t input_len = Buffer::Length(target);
 
     scryptjane_hash(input, input_len, (uint32_t *)output, GetNfactorJane(timestamp, nChainStartTime, nMin, nMax));
 
-    Local<Object> buff = Nan::NewBuffer(output, 32).ToLocalChecked();
-    args.GetReturnValue().Set(buff);
+    NanReturnValue(
+        NanNewBufferHandle(output, 32)
+    );
 }
 
-void yescrypt(const FunctionCallbackInfo<Value>& args) {
-    Isolate* isolate = Isolate::GetCurrent();HandleScope scope(isolate);
+NAN_METHOD(keccak) {
+    NanScope();
 
     if (args.Length() < 1)
-        return except("You must provide one argument.");
-
-   Local<Object> target = args[0]->ToObject();
-
-   if(!Buffer::HasInstance(target))
-       return except("Argument should be a buffer object.");
-    
-   
-   char * input = Buffer::Data(target);
-   char* output = new char[32];
-
-   
-   yescrypt_hash(input, output);
-
-   Local<Object> buff = Nan::NewBuffer(output, 32).ToLocalChecked();
-   args.GetReturnValue().Set(buff);
-}
-
-void keccak(const FunctionCallbackInfo<Value>& args) {
-     Isolate* isolate = Isolate::GetCurrent();HandleScope scope(isolate);
-
-    if (args.Length() < 1)
-        return except("You must provide one argument.");
+        return THROW_ERROR_EXCEPTION("You must provide one argument.");
 
     Local<Object> target = args[0]->ToObject();
 
     if(!Buffer::HasInstance(target))
-        return except("Argument should be a buffer object.");
+        return THROW_ERROR_EXCEPTION("Argument should be a buffer object.");
 
     char * input = Buffer::Data(target);
-    char* output = new char[32];
+    char output[32];
 
     unsigned int dSize = Buffer::Length(target);
 
     keccak_hash(input, output, dSize);
 
-    Local<Object> buff = Nan::NewBuffer(output, 32).ToLocalChecked();
-    args.GetReturnValue().Set(buff);
+    NanReturnValue(
+        NanNewBufferHandle(output, 32)
+    );
 }
 
 
-void bcrypt(const FunctionCallbackInfo<Value>& args) {
-     Isolate* isolate = Isolate::GetCurrent();HandleScope scope(isolate);
+NAN_METHOD(bcrypt) {
+    NanScope();
 
     if (args.Length() < 1)
-        return except("You must provide one argument.");
+        return THROW_ERROR_EXCEPTION("You must provide one argument.");
 
     Local<Object> target = args[0]->ToObject();
 
     if(!Buffer::HasInstance(target))
-        return except("Argument should be a buffer object.");
+        return THROW_ERROR_EXCEPTION("Argument should be a buffer object.");
 
     char * input = Buffer::Data(target);
-    char* output = new char[32];
+    char output[32];
 
     bcrypt_hash(input, output);
 
-    Local<Object> buff = Nan::NewBuffer(output, 32).ToLocalChecked();
-    args.GetReturnValue().Set(buff);
+    NanReturnValue(
+        NanNewBufferHandle(output, 32)
+    );
 }
 
-void skein(const FunctionCallbackInfo<Value>& args) {
-     Isolate* isolate = Isolate::GetCurrent();HandleScope scope(isolate);
+NAN_METHOD(skein) {
+    NanScope();
 
     if (args.Length() < 1)
-        return except("You must provide one argument.");
+        return THROW_ERROR_EXCEPTION("You must provide one argument.");
 
     Local<Object> target = args[0]->ToObject();
 
     if(!Buffer::HasInstance(target))
-        return except("Argument should be a buffer object.");
+        return THROW_ERROR_EXCEPTION("Argument should be a buffer object.");
 
     char * input = Buffer::Data(target);
-    char* output = new char[32];
+    char output[32];
 
     uint32_t input_len = Buffer::Length(target);
-    
+
     skein_hash(input, output, input_len);
 
-    Local<Object> buff = Nan::NewBuffer(output, 32).ToLocalChecked();
-    args.GetReturnValue().Set(buff);
+    NanReturnValue(
+        NanNewBufferHandle(output, 32)
+    );
 }
 
 
-void groestl(const FunctionCallbackInfo<Value>& args) {
-     Isolate* isolate = Isolate::GetCurrent();HandleScope scope(isolate);
+NAN_METHOD(groestl) {
+    NanScope();
 
     if (args.Length() < 1)
-        return except("You must provide one argument.");
+        return THROW_ERROR_EXCEPTION("You must provide one argument.");
 
     Local<Object> target = args[0]->ToObject();
 
     if(!Buffer::HasInstance(target))
-        return except("Argument should be a buffer object.");
+        return THROW_ERROR_EXCEPTION("Argument should be a buffer object.");
 
     char * input = Buffer::Data(target);
-    char* output = new char[32];
-    
+    char output[32];
+
     uint32_t input_len = Buffer::Length(target);
 
     groestl_hash(input, output, input_len);
 
-    Local<Object> buff = Nan::NewBuffer(output, 32).ToLocalChecked();
-    args.GetReturnValue().Set(buff);
+    NanReturnValue(
+        NanNewBufferHandle(output, 32)
+    );
 }
 
 
-void groestlmyriad(const FunctionCallbackInfo<Value>& args) {
-     Isolate* isolate = Isolate::GetCurrent();HandleScope scope(isolate);
+NAN_METHOD(groestlmyriad) {
+    NanScope();
 
     if (args.Length() < 1)
-        return except("You must provide one argument.");
+        return THROW_ERROR_EXCEPTION("You must provide one argument.");
 
     Local<Object> target = args[0]->ToObject();
 
     if(!Buffer::HasInstance(target))
-        return except("Argument should be a buffer object.");
+        return THROW_ERROR_EXCEPTION("Argument should be a buffer object.");
 
     char * input = Buffer::Data(target);
-    char* output = new char[32];
-    
+    char output[32];
+
     uint32_t input_len = Buffer::Length(target);
 
     groestlmyriad_hash(input, output, input_len);
 
-    Local<Object> buff = Nan::NewBuffer(output, 32).ToLocalChecked();
-    args.GetReturnValue().Set(buff);
+    NanReturnValue(
+        NanNewBufferHandle(output, 32)
+    );
 }
 
 
-void blake(const FunctionCallbackInfo<Value>& args) {
-     Isolate* isolate = Isolate::GetCurrent();HandleScope scope(isolate);
+NAN_METHOD(blake) {
+    NanScope();
 
     if (args.Length() < 1)
-        return except("You must provide one argument.");
+        return THROW_ERROR_EXCEPTION("You must provide one argument.");
 
     Local<Object> target = args[0]->ToObject();
 
     if(!Buffer::HasInstance(target))
-        return except("Argument should be a buffer object.");
+        return THROW_ERROR_EXCEPTION("Argument should be a buffer object.");
 
     char * input = Buffer::Data(target);
-    char* output = new char[32];
-    
+    char output[32];
+
     uint32_t input_len = Buffer::Length(target);
 
     blake_hash(input, output, input_len);
 
-    Local<Object> buff = Nan::NewBuffer(output, 32).ToLocalChecked();
-    args.GetReturnValue().Set(buff);
+    NanReturnValue(
+        NanNewBufferHandle(output, 32)
+    );
 }
 
 
-void fugue(const FunctionCallbackInfo<Value>& args) {
-     Isolate* isolate = Isolate::GetCurrent();HandleScope scope(isolate);
+NAN_METHOD(fugue) {
+    NanScope();
 
     if (args.Length() < 1)
-        return except("You must provide one argument.");
+        return THROW_ERROR_EXCEPTION("You must provide one argument.");
 
     Local<Object> target = args[0]->ToObject();
 
     if(!Buffer::HasInstance(target))
-        return except("Argument should be a buffer object.");
+        return THROW_ERROR_EXCEPTION("Argument should be a buffer object.");
 
     char * input = Buffer::Data(target);
-    char* output = new char[32];
-    
+    char output[32];
+
     uint32_t input_len = Buffer::Length(target);
 
     fugue_hash(input, output, input_len);
 
-    Local<Object> buff = Nan::NewBuffer(output, 32).ToLocalChecked();
-    args.GetReturnValue().Set(buff);
+    NanReturnValue(
+        NanNewBufferHandle(output, 32)
+    );
 }
 
 
-void qubit(const FunctionCallbackInfo<Value>& args) {
-     Isolate* isolate = Isolate::GetCurrent();HandleScope scope(isolate);
+NAN_METHOD(qubit) {
+    NanScope();
 
     if (args.Length() < 1)
-        return except("You must provide one argument.");
+        return THROW_ERROR_EXCEPTION("You must provide one argument.");
 
     Local<Object> target = args[0]->ToObject();
 
     if(!Buffer::HasInstance(target))
-        return except("Argument should be a buffer object.");
+        return THROW_ERROR_EXCEPTION("Argument should be a buffer object.");
 
     char * input = Buffer::Data(target);
-    char* output = new char[32];
-    
+    char output[32];
+
     uint32_t input_len = Buffer::Length(target);
 
     qubit_hash(input, output, input_len);
 
-    Local<Object> buff = Nan::NewBuffer(output, 32).ToLocalChecked();
-    args.GetReturnValue().Set(buff);
+    NanReturnValue(
+        NanNewBufferHandle(output, 32)
+    );
 }
 
 
-void hefty1(const FunctionCallbackInfo<Value>& args) {
-     Isolate* isolate = Isolate::GetCurrent();HandleScope scope(isolate);
+NAN_METHOD(hefty1) {
+    NanScope();
 
     if (args.Length() < 1)
-        return except("You must provide one argument.");
+        return THROW_ERROR_EXCEPTION("You must provide one argument.");
 
     Local<Object> target = args[0]->ToObject();
 
     if(!Buffer::HasInstance(target))
-        return except("Argument should be a buffer object.");
+        return THROW_ERROR_EXCEPTION("Argument should be a buffer object.");
 
     char * input = Buffer::Data(target);
-    char* output = new char[32];
-    
+    char output[32];
+
     uint32_t input_len = Buffer::Length(target);
 
     hefty1_hash(input, output, input_len);
 
-    Local<Object> buff = Nan::NewBuffer(output, 32).ToLocalChecked();
-    args.GetReturnValue().Set(buff);
+    NanReturnValue(
+        NanNewBufferHandle(output, 32)
+    );
 }
 
 
-void shavite3(const FunctionCallbackInfo<Value>& args) {
-     Isolate* isolate = Isolate::GetCurrent();HandleScope scope(isolate);
+NAN_METHOD(shavite3) {
+    NanScope();
 
     if (args.Length() < 1)
-        return except("You must provide one argument.");
+        return THROW_ERROR_EXCEPTION("You must provide one argument.");
 
     Local<Object> target = args[0]->ToObject();
 
     if(!Buffer::HasInstance(target))
-        return except("Argument should be a buffer object.");
+        return THROW_ERROR_EXCEPTION("Argument should be a buffer object.");
 
     char * input = Buffer::Data(target);
-    char* output = new char[32];
-    
+    char output[32];
+
     uint32_t input_len = Buffer::Length(target);
 
     shavite3_hash(input, output, input_len);
 
-    Local<Object> buff = Nan::NewBuffer(output, 32).ToLocalChecked();
-    args.GetReturnValue().Set(buff);
+    NanReturnValue(
+        NanNewBufferHandle(output, 32)
+    );
 }
 
-void cryptonight(const FunctionCallbackInfo<Value>& args) {
-     Isolate* isolate = Isolate::GetCurrent();HandleScope scope(isolate);
-
-    bool fast = false;
+NAN_METHOD(x13) {
+    NanScope();
 
     if (args.Length() < 1)
-        return except("You must provide one argument.");
-    
-    if (args.Length() >= 2) {
-        if(!args[1]->IsBoolean())
-            return except("Argument 2 should be a boolean");
-        fast = args[1]->ToBoolean()->BooleanValue();
-    }
+        return THROW_ERROR_EXCEPTION("You must provide one argument.");
 
     Local<Object> target = args[0]->ToObject();
 
     if(!Buffer::HasInstance(target))
-        return except("Argument should be a buffer object.");
+        return THROW_ERROR_EXCEPTION("Argument should be a buffer object.");
 
     char * input = Buffer::Data(target);
-    char* output = new char[32];
-    
-    uint32_t input_len = Buffer::Length(target);
-
-    if(fast)
-        cryptonight_fast_hash(input, output, input_len);
-    else
-        cryptonight_hash(input, output, input_len);
-
-    Local<Object> buff = Nan::NewBuffer(output, 32).ToLocalChecked();
-    args.GetReturnValue().Set(buff);
-}
-
-void x13(const FunctionCallbackInfo<Value>& args) {
-     Isolate* isolate = Isolate::GetCurrent();HandleScope scope(isolate);
-
-    if (args.Length() < 1)
-        return except("You must provide one argument.");
-
-    Local<Object> target = args[0]->ToObject();
-
-    if(!Buffer::HasInstance(target))
-        return except("Argument should be a buffer object.");
-
-    char * input = Buffer::Data(target);
-    char* output = new char[32];
+    char output[32];
 
     uint32_t input_len = Buffer::Length(target);
 
     x13_hash(input, output, input_len);
 
-    Local<Object> buff = Nan::NewBuffer(output, 32).ToLocalChecked();
-    args.GetReturnValue().Set(buff);
+    NanReturnValue(
+        NanNewBufferHandle(output, 32)
+    );
 }
 
-void boolberry(const FunctionCallbackInfo<Value>& args) {
-     Isolate* isolate = Isolate::GetCurrent();HandleScope scope(isolate);
-
-    if (args.Length() < 2)
-        return except("You must provide two arguments.");
-
-    Local<Object> target = args[0]->ToObject();
-    Local<Object> target_spad = args[1]->ToObject();
-    uint32_t height = 1;
-
-    if(!Buffer::HasInstance(target))
-        return except("Argument 1 should be a buffer object.");
-
-    if(!Buffer::HasInstance(target_spad))
-        return except("Argument 2 should be a buffer object.");
-
-    if(args.Length() >= 3)
-        if(args[2]->IsUint32())
-            height = args[2]->ToUint32()->Uint32Value();
-        else
-            return except("Argument 3 should be an unsigned integer.");
-
-    char * input = Buffer::Data(target);
-    char * scratchpad = Buffer::Data(target_spad);
-    char* output = new char[32];
-
-    uint32_t input_len = Buffer::Length(target);
-    uint64_t spad_len = Buffer::Length(target_spad);
-
-    boolberry_hash(input, input_len, scratchpad, spad_len, output, height);
-
-    Local<Object> buff = Nan::NewBuffer(output, 32).ToLocalChecked();
-    args.GetReturnValue().Set(buff);
-}
-
-void nist5(const FunctionCallbackInfo<Value>& args) {
-     Isolate* isolate = Isolate::GetCurrent();HandleScope scope(isolate);
+NAN_METHOD(nist5) {
+    NanScope();
 
     if (args.Length() < 1)
-        return except("You must provide one argument.");
+        return THROW_ERROR_EXCEPTION("You must provide one argument.");
 
     Local<Object> target = args[0]->ToObject();
 
     if(!Buffer::HasInstance(target))
-        return except("Argument should be a buffer object.");
+        return THROW_ERROR_EXCEPTION("Argument should be a buffer object.");
 
     char * input = Buffer::Data(target);
-    char* output = new char[32];
+    char output[32];
 
     uint32_t input_len = Buffer::Length(target);
 
     nist5_hash(input, output, input_len);
 
-    Local<Object> buff = Nan::NewBuffer(output, 32).ToLocalChecked();
-    args.GetReturnValue().Set(buff);
+    NanReturnValue(
+        NanNewBufferHandle(output, 32)
+    );
 }
 
-void sha1(const FunctionCallbackInfo<Value>& args) {
-     Isolate* isolate = Isolate::GetCurrent();HandleScope scope(isolate);
+NAN_METHOD(sha1) {
+    NanScope();
 
     if (args.Length() < 1)
-        return except("You must provide one argument.");
+        return THROW_ERROR_EXCEPTION("You must provide one argument.");
 
     Local<Object> target = args[0]->ToObject();
 
     if(!Buffer::HasInstance(target))
-        return except("Argument should be a buffer object.");
+        return THROW_ERROR_EXCEPTION("Argument should be a buffer object.");
 
     char * input = Buffer::Data(target);
-    char* output = new char[32];
+    char output[32];
 
     uint32_t input_len = Buffer::Length(target);
 
     sha1_hash(input, output, input_len);
 
-    Local<Object> buff = Nan::NewBuffer(output, 32).ToLocalChecked();
-    args.GetReturnValue().Set(buff);
+    NanReturnValue(
+        NanNewBufferHandle(output, 32)
+    );
 }
 
-void x15(const FunctionCallbackInfo<Value>& args) {
-     Isolate* isolate = Isolate::GetCurrent();HandleScope scope(isolate);
+NAN_METHOD(x15) {
+    NanScope();
 
     if (args.Length() < 1)
-        return except("You must provide one argument.");
+        return THROW_ERROR_EXCEPTION("You must provide one argument.");
 
     Local<Object> target = args[0]->ToObject();
 
     if(!Buffer::HasInstance(target))
-        return except("Argument should be a buffer object.");
+        return THROW_ERROR_EXCEPTION("Argument should be a buffer object.");
 
     char * input = Buffer::Data(target);
-    char* output = new char[32];
+    char output[32];
 
     uint32_t input_len = Buffer::Length(target);
 
     x15_hash(input, output, input_len);
 
-    Local<Object> buff = Nan::NewBuffer(output, 32).ToLocalChecked();
-    args.GetReturnValue().Set(buff);
+    NanReturnValue(
+        NanNewBufferHandle(output, 32)
+    );
 }
 
-void fresh(const FunctionCallbackInfo<Value>& args) {
-     Isolate* isolate = Isolate::GetCurrent();HandleScope scope(isolate);
+NAN_METHOD(fresh) {
+    NanScope();
 
     if (args.Length() < 1)
-        return except("You must provide one argument.");
+        return THROW_ERROR_EXCEPTION("You must provide one argument.");
 
     Local<Object> target = args[0]->ToObject();
 
     if(!Buffer::HasInstance(target))
-        return except("Argument should be a buffer object.");
+        return THROW_ERROR_EXCEPTION("Argument should be a buffer object.");
 
     char * input = Buffer::Data(target);
-    char* output = new char[32];
+    char output[32];
 
     uint32_t input_len = Buffer::Length(target);
 
     fresh_hash(input, output, input_len);
 
-    Local<Object> buff = Nan::NewBuffer(output, 32).ToLocalChecked();
-    args.GetReturnValue().Set(buff);
+    NanReturnValue(
+        NanNewBufferHandle(output, 32)
+    );
+}
+
+NAN_METHOD(lyra2re) {
+    NanScope();
+
+    if (args.Length() < 1)
+        return THROW_ERROR_EXCEPTION("You must provide one argument.");
+
+    Local<Object> target = args[0]->ToObject();
+
+    if(!Buffer::HasInstance(target))
+        return THROW_ERROR_EXCEPTION("Argument should be a buffer object.");
+
+    char * input = Buffer::Data(target);
+    char output[32];
+
+    lyra2re_hash(input, output);
+
+    NanReturnValue(
+        NanNewBufferHandle(output, 32)
+    );
+}
+
+NAN_METHOD(lyra2re2) {
+    NanScope();
+
+    if (args.Length() < 1)
+        return THROW_ERROR_EXCEPTION("You must provide one argument.");
+
+    Local<Object> target = args[0]->ToObject();
+
+    if(!Buffer::HasInstance(target))
+        return THROW_ERROR_EXCEPTION("Argument should be a buffer object.");
+
+    char * input = Buffer::Data(target);
+    char output[32];
+
+    lyra2re2_hash(input, output);
+
+    NanReturnValue(
+        NanNewBufferHandle(output, 32)
+    );
 }
 
 void init(Handle<Object> exports) {
-    NODE_SET_METHOD(exports, "quark", quark);
-    NODE_SET_METHOD(exports, "x11", x11);
-    NODE_SET_METHOD(exports, "scrypt", scrypt);
-    NODE_SET_METHOD(exports, "scryptn", scryptn);
-    NODE_SET_METHOD(exports, "scryptjane", scryptjane);
-    NODE_SET_METHOD(exports, "yescrypt", yescrypt);
-    NODE_SET_METHOD(exports, "keccak", keccak);
-    NODE_SET_METHOD(exports, "bcrypt", bcrypt);
-    NODE_SET_METHOD(exports, "skein", skein);
-    NODE_SET_METHOD(exports, "groestl", groestl);
-    NODE_SET_METHOD(exports, "groestlmyriad", groestlmyriad);
-    NODE_SET_METHOD(exports, "blake", blake);
-    NODE_SET_METHOD(exports, "fugue", fugue);
-    NODE_SET_METHOD(exports, "qubit", qubit);
-    NODE_SET_METHOD(exports, "hefty1", hefty1);
-    NODE_SET_METHOD(exports, "shavite3", shavite3);
-    NODE_SET_METHOD(exports, "cryptonight", cryptonight);
-    NODE_SET_METHOD(exports, "x13", x13);
-    NODE_SET_METHOD(exports, "boolberry", boolberry);
-    NODE_SET_METHOD(exports, "nist5", nist5);
-    NODE_SET_METHOD(exports, "sha1", sha1);
-    NODE_SET_METHOD(exports, "x15", x15);
-    NODE_SET_METHOD(exports, "fresh", fresh);
+    exports->Set(NanNew<String>("quark"), NanNew<FunctionTemplate>(quark)->GetFunction());
+    exports->Set(NanNew<String>("x11"), NanNew<FunctionTemplate>(x11)->GetFunction());
+    exports->Set(NanNew<String>("scrypt"), NanNew<FunctionTemplate>(scrypt)->GetFunction());
+    exports->Set(NanNew<String>("scryptn"), NanNew<FunctionTemplate>(scryptn)->GetFunction());
+    exports->Set(NanNew<String>("scryptjane"), NanNew<FunctionTemplate>(scryptjane)->GetFunction());
+    exports->Set(NanNew<String>("keccak"), NanNew<FunctionTemplate>(keccak)->GetFunction());
+    exports->Set(NanNew<String>("bcrypt"), NanNew<FunctionTemplate>(bcrypt)->GetFunction());
+    exports->Set(NanNew<String>("skein"), NanNew<FunctionTemplate>(skein)->GetFunction());
+    exports->Set(NanNew<String>("groestl"), NanNew<FunctionTemplate>(groestl)->GetFunction());
+    exports->Set(NanNew<String>("groestlmyriad"), NanNew<FunctionTemplate>(groestlmyriad)->GetFunction());
+    exports->Set(NanNew<String>("blake"), NanNew<FunctionTemplate>(blake)->GetFunction());
+    exports->Set(NanNew<String>("fugue"), NanNew<FunctionTemplate>(fugue)->GetFunction());
+    exports->Set(NanNew<String>("qubit"), NanNew<FunctionTemplate>(qubit)->GetFunction());
+    exports->Set(NanNew<String>("hefty1"), NanNew<FunctionTemplate>(hefty1)->GetFunction());
+    exports->Set(NanNew<String>("shavite3"), NanNew<FunctionTemplate>(shavite3)->GetFunction());
+    exports->Set(NanNew<String>("x13"), NanNew<FunctionTemplate>(x13)->GetFunction());
+    exports->Set(NanNew<String>("nist5"), NanNew<FunctionTemplate>(nist5)->GetFunction());
+    exports->Set(NanNew<String>("sha1"), NanNew<FunctionTemplate>(sha1)->GetFunction());
+    exports->Set(NanNew<String>("x15"), NanNew<FunctionTemplate>(x15)->GetFunction());
+    exports->Set(NanNew<String>("fresh"), NanNew<FunctionTemplate>(fresh)->GetFunction());
+    exports->Set(NanNew<String>("lyra2re"), NanNew<FunctionTemplate>(lyra2re)->GetFunction());
+    exports->Set(NanNew<String>("lyra2re2"), NanNew<FunctionTemplate>(lyra2re2)->GetFunction());
+    exports->Set(NanNew<String>("yescrypt"), NanNew<FunctionTemplate>(yescrypt)->GetFunction());
 }
 
 NODE_MODULE(multihashing, init)
