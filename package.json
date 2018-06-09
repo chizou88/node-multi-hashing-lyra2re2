@@ -1,6 +1,6 @@
 {
     "name": "multi-hashing",
-    "version": "1.0.0",
+    "version": "0.0.9",
     "license": "SEE LICENSE IN <filename>",
     "main": "multihashing",
     "author": {
