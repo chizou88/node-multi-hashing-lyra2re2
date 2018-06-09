@@ -617,7 +617,7 @@ void lyra2re(const FunctionCallbackInfo<Value>& args) {
 
     uint32_t input_len = Buffer::Length(target);
 
-    lyra2re_hash(input, output, input_len);
+    lyra2re_hash(input, output);
 
     Local<Object> buff = Nan::NewBuffer(output, 32).ToLocalChecked();
     args.GetReturnValue().Set(buff);
@@ -639,7 +639,7 @@ void lyra2re2(const FunctionCallbackInfo<Value>& args) {
 
     uint32_t input_len = Buffer::Length(target);
 
-    lyra2re2_hash(input, output, input_len);
+    lyra2re2_hash(input, output);
 
     Local<Object> buff = Nan::NewBuffer(output, 32).ToLocalChecked();
     args.GetReturnValue().Set(buff);
